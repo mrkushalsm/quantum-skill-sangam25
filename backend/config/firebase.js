@@ -1,37 +1,58 @@
 const admin = require('firebase-admin');
 
-// Initialize Firebase Admin SDK using environment variables
+// Initialize Firebase Admin SDK
 const initializeFirebase = () => {
   try {
-    // Build service account object from environment variables
-    const serviceAccount = {
-      type: 'service_account',
-      project_id: process.env.FIREBASE_PROJECT_ID,
-      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-      private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
-      client_email: process.env.FIREBASE_CLIENT_EMAIL,
-      client_id: process.env.FIREBASE_CLIENT_ID,
-      auth_uri: process.env.FIREBASE_AUTH_URI,
-      token_uri: process.env.FIREBASE_TOKEN_URI,
-      auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
-      client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
-    };
-
-    if (!serviceAccount.private_key) {
-      throw new Error('FIREBASE_PRIVATE_KEY environment variable is missing');
+    // Check if already initialized
+    if (admin.apps.length > 0) {
+      console.log('Firebase Admin already initialized, returning existing app');
+      return admin.app();
     }
 
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      databaseURL: process.env.FIREBASE_DATABASE_URL,
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET
+    console.log('Initializing Firebase Admin SDK...');
+    
+    // Required environment variables
+    const requiredVars = [
+      'FIREBASE_PROJECT_ID',
+      'FIREBASE_CLIENT_EMAIL',
+      'FIREBASE_PRIVATE_KEY',
+      'FIREBASE_PRIVATE_KEY_ID',
+      'FIREBASE_CLIENT_ID'
+    ];
+
+    // Check for required environment variables
+    const missingVars = requiredVars.filter(varName => !process.env[varName]);
+    if (missingVars.length > 0) {
+      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+    }
+
+    // Format private key (replace escaped newlines with actual newlines)
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+
+    // Initialize Firebase Admin
+    const firebaseApp = admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
+        privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
+        clientId: process.env.FIREBASE_CLIENT_ID,
+        authUri: process.env.FIREBASE_AUTH_URI || 'https://accounts.google.com/o/oauth2/auth',
+        tokenUri: process.env.FIREBASE_TOKEN_URI || 'https://oauth2.googleapis.com/token',
+        authProviderX509CertUrl: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL || 'https://www.googleapis.com/oauth2/v1/certs',
+        clientX509CertUrl: process.env.FIREBASE_CLIENT_X509_CERT_URL
+      }),
+      databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`,
+      storageBucket: `${process.env.FIREBASE_PROJECT_ID}.appspot.com`
     });
 
     console.log('Firebase Admin SDK initialized successfully');
+    console.log(`Project: ${process.env.FIREBASE_PROJECT_ID}`);
+    console.log(`Service Account: ${process.env.FIREBASE_CLIENT_EMAIL}`);
     
-    return admin;
+    return firebaseApp;
   } catch (error) {
-    console.error('Firebase initialization failed:', error.message);
+    console.error('Firebase initialization failed:', error);
     process.exit(1);
   }
 };
@@ -39,11 +60,39 @@ const initializeFirebase = () => {
 // Verify Firebase ID token
 const verifyIdToken = async (idToken) => {
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    return decodedToken;
+    if (!idToken) {
+      throw new Error('No ID token provided');
+    }
+    
+    const auth = admin.auth();
+    const decodedToken = await auth.verifyIdToken(idToken);
+    
+    // Optionally, you can fetch the user's full record
+    // const userRecord = await auth.getUser(decodedToken.uid);
+    
+    return {
+      ...decodedToken,
+      // ...userRecord.toJSON()
+    };
   } catch (error) {
-    throw new Error('Invalid Firebase token');
+    console.error('Token verification failed:', error.message);
+    throw new Error(`Authentication failed: ${error.message}`);
   }
+};
+
+// Get Firebase Auth instance
+const getAuth = () => {
+  return admin.auth();
+};
+
+// Get Firestore instance
+const getFirestore = () => {
+  return admin.firestore();
+};
+
+// Get Storage instance
+const getStorage = () => {
+  return admin.storage();
 };
 
 // Create custom token for user
@@ -86,6 +135,9 @@ const deleteUser = async (uid) => {
   }
 };
 
+// Initialize Firebase immediately when this module is imported
+const firebaseApp = initializeFirebase();
+
 module.exports = {
   initializeFirebase,
   verifyIdToken,
@@ -93,5 +145,8 @@ module.exports = {
   getUserByUid,
   setCustomUserClaims,
   deleteUser,
-  admin
+  getAuth,
+  getFirestore,
+  getStorage,
+  admin: firebaseApp
 };
