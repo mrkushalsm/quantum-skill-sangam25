@@ -1,16 +1,95 @@
-const { body, validationResult } = require('express-validator');
+const { body, param, query, validationResult } = require('express-validator');
+const { toObjectId } = require('../utils/transaction');
 
-// Generic validation result handler
+/**
+ * Generic validation result handler
+ * Formats validation errors consistently
+ */
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    const formattedErrors = errors.array().map(error => ({
+      param: error.param,
+      location: error.location,
+      message: error.msg,
+      value: error.value
+    }));
+
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
-      errors: errors.array()
+      error: 'VALIDATION_ERROR',
+      details: formattedErrors,
+      timestamp: new Date().toISOString()
     });
   }
   next();
+};
+
+/**
+ * Common validation rules that can be reused across different routes
+ */
+const commonValidators = {
+  // Validate MongoDB ObjectId in URL parameters
+  mongoId: (field = 'id', location = 'params') => {
+    const locationMap = {
+      params: param,
+      query: query,
+      body: body
+    };
+    
+    const validator = locationMap[location] || param;
+    
+    return [
+      validator(field)
+        .trim()
+        .notEmpty()
+        .withMessage(`${field} is required`)
+        .custom(value => {
+          if (!/^[0-9a-fA-F]{24}$/.test(value)) {
+            throw new Error(`Invalid ${field} format`);
+          }
+          return true;
+        })
+        .customSanitizer(toObjectId)
+    ];
+  },
+  
+  // Pagination query parameters
+  pagination: [
+    query('page')
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage('Page must be a positive integer')
+      .toInt(),
+    query('limit')
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage('Limit must be between 1 and 100')
+      .toInt(),
+    query('sort')
+      .optional()
+      .isString()
+      .trim()
+      .matches(/^[a-zA-Z0-9_]+:(asc|desc)$/)
+      .withMessage('Sort must be in format: field:(asc|desc)')
+  ],
+  
+  // Search query parameter
+  search: query('q')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Search query must be between 2 and 100 characters'),
+    
+  // Status filter
+  status: query('status')
+    .optional()
+    .isString()
+    .trim()
+    .isIn(['active', 'inactive', 'pending', 'approved', 'rejected'])
+    .withMessage('Invalid status value')
 };
 
 // User registration validation

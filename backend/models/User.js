@@ -1,65 +1,50 @@
 const mongoose = require('mongoose');
+const emergencyPlugin = require('../plugins/emergency');
 
-const userSchema = new mongoose.Schema({
-  firebaseUid: {
-    type: String,
-    required: true,
-    unique: true,
-    index: true
-  },  email: {
-    type: String,
-    required: true,
-    unique: true,
-    lowercase: true,
-    trim: true,
-    validate: {
-      validator: function(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      },
-      message: 'Please provide a valid email address'
-    }
-  },
-  firstName: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 50
-  },
-  lastName: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 50
-  },
-  phoneNumber: {
-    type: String,
-    required: true,
-    match: /^[0-9]{10}$/
-  },
+// Core schema
+const coreSchema = new mongoose.Schema({
   role: {
     type: String,
-    enum: ['officer', 'family_member', 'admin'],
+    enum: ['Admin', 'Officer', 'Family'],
     required: true
   },
-  profilePicture: {
-    type: String,
-    default: null
-  },
-  
-  // Officer-specific fields
+  contactInfo: {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      validate: {
+        validator: function(email) {
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        },
+        message: 'Please provide a valid email address'
+      }
+    },
+    phone: {
+      type: String,
+      required: true,
+      match: /^[0-9]{10}$/
+    }
+  }
+});
+
+// Officer extension
+const officerExtension = new mongoose.Schema({
   serviceNumber: {
     type: String,
-    required: function() { return this.role === 'officer'; },
+    required: true,
     unique: true,
     sparse: true
   },
   rank: {
     type: String,
-    required: function() { return this.role === 'officer'; }
+    required: true
   },
   unit: {
     type: String,
-    required: function() { return this.role === 'officer'; }
+    required: true
   },
   postingLocation: {
     type: String
@@ -69,23 +54,52 @@ const userSchema = new mongoose.Schema({
   },
   retirementDate: {
     type: Date
-  },
-  
-  // Family member-specific fields
+  }
+});
+
+// Family member extension
+const familyMemberExtension = new mongoose.Schema({
   relationToOfficer: {
     type: String,
-    required: function() { return this.role === 'family_member'; },
+    required: true,
     enum: ['spouse', 'child', 'parent', 'sibling', 'other']
   },
   officerServiceNumber: {
     type: String,
-    required: function() { return this.role === 'family_member'; }
+    required: true
   },
   dependentId: {
     type: String
+  }
+});
+
+// User schema
+const userSchema = new mongoose.Schema({
+  firebaseUid: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true
   },
-  
-  // Contact information
+  coreData: coreSchema,
+  extensions: {
+    type: Map,
+    of: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  address: {
+    street: String,
+    city: String,
+    state: String,
+    pincode: {
+      type: String,
+      match: /^[0-9]{6}$/
+    },
+    country: {
+      type: String,
+      default: 'India'
+    }
+  },
   emergencyContacts: [{
     name: {
       type: String,
@@ -105,22 +119,6 @@ const userSchema = new mongoose.Schema({
       default: false
     }
   }],
-  
-  address: {
-    street: String,
-    city: String,
-    state: String,
-    pincode: {
-      type: String,
-      match: /^[0-9]{6}$/
-    },
-    country: {
-      type: String,
-      default: 'India'
-    }
-  },
-  
-  // Account status
   isActive: {
     type: Boolean,
     default: true
@@ -132,8 +130,6 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date
   },
-  
-  // Notifications preferences
   notificationPreferences: {
     email: {
       type: Boolean,
@@ -152,8 +148,6 @@ const userSchema = new mongoose.Schema({
       default: true
     }
   },
-  
-  // Privacy settings
   profileVisibility: {
     type: String,
     enum: ['public', 'unit_only', 'private'],
@@ -166,16 +160,16 @@ const userSchema = new mongoose.Schema({
 });
 
 // Indexes
-userSchema.index({ email: 1 });
-userSchema.index({ serviceNumber: 1 });
-userSchema.index({ officerServiceNumber: 1 });
-userSchema.index({ role: 1 });
-userSchema.index({ unit: 1 });
+userSchema.index({ 'coreData.contactInfo.email': 1 });
+userSchema.index({ 'extensions.serviceNumber': 1 });
+userSchema.index({ 'extensions.officerServiceNumber': 1 });
+userSchema.index({ 'coreData.role': 1 });
+userSchema.index({ 'extensions.unit': 1 });
 userSchema.index({ isActive: 1 });
 
 // Virtual for full name
 userSchema.virtual('fullName').get(function() {
-  return `${this.firstName} ${this.lastName}`;
+  return `${this.coreData.firstName} ${this.coreData.lastName}`;
 });
 
 // Virtual for applications
@@ -225,11 +219,11 @@ userSchema.methods.toJSON = function() {
 };
 
 userSchema.methods.hasRole = function(role) {
-  return this.role === role;
+  return this.coreData.role === role;
 };
 
 userSchema.methods.canAccessResource = function(resourceUserId) {
-  return this.role === 'admin' || this._id.toString() === resourceUserId.toString();
+  return this.coreData.role === 'Admin' || this._id.toString() === resourceUserId.toString();
 };
 
 // Static methods
@@ -238,15 +232,17 @@ userSchema.statics.findByFirebaseUid = function(firebaseUid) {
 };
 
 userSchema.statics.findOfficers = function() {
-  return this.find({ role: 'officer', isActive: true });
+  return this.find({ 'coreData.role': 'Officer', isActive: true });
 };
 
 userSchema.statics.findByUnit = function(unit) {
-  return this.find({ unit, isActive: true });
+  return this.find({ 'extensions.unit': unit, isActive: true });
 };
 
 userSchema.statics.findFamilyMembers = function(serviceNumber) {
-  return this.find({ officerServiceNumber: serviceNumber, isActive: true });
+  return this.find({ 'extensions.officerServiceNumber': serviceNumber, isActive: true });
 };
+
+userSchema.plugin(emergencyPlugin);
 
 module.exports = mongoose.model('User', userSchema);
