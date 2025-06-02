@@ -189,11 +189,6 @@ router.post('/login', async (req, res) => {
         throw new Error(data.error?.message || 'Invalid email or password');
       }
       
-      // Update the user's last login time
-      await admin.auth().updateUser(firebaseUser.uid, {
-        lastLoginAt: new Date().toISOString(),
-      });
-      
     } catch (authError) {
       console.error('Firebase auth error:', authError);
       return res.status(401).json({
@@ -202,12 +197,24 @@ router.post('/login', async (req, res) => {
       });
     }
     
-    // Find user in database
-    const user = await User.findOne({ firebaseUid: firebaseUser.uid });
+    // Find user in database and update last login
+    const user = await User.findOneAndUpdate(
+      { firebaseUid: firebaseUser.uid },
+      { 
+        $set: { 
+          lastLogin: new Date() 
+        } 
+      },
+      { new: true }
+    );
 
     if (!user) {
       // Clean up the Firebase user if not found in our database
-      await admin.auth().deleteUser(firebaseUser.uid);
+      try {
+        await admin.auth().deleteUser(firebaseUser.uid);
+      } catch (cleanupError) {
+        console.error('Error cleaning up Firebase user:', cleanupError);
+      }
       return res.status(404).json({
         success: false,
         message: 'User not found. Please register first.'
