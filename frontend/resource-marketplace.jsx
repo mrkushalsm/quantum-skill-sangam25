@@ -31,7 +31,7 @@ import {
 
 import { HomeIcon } from "lucide-react"
 
-const ResourceMarketplace = () => {
+const ResourceMarketplace = ({ setCurrentPage }) => {
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [showAddForm, setShowAddForm] = useState(false)
@@ -135,13 +135,32 @@ const ResourceMarketplace = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-green-50">
+      {/* Navigation Header */}
+      <div className="bg-white shadow-md border-b-2 border-orange-500 mb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setCurrentPage("home")}
+                className="flex items-center space-x-2 text-orange-600 hover:text-orange-800 transition-colors"
+              >
+                <HomeIcon className="h-5 w-5" />
+                <span className="font-medium">Back to Home</span>
+              </button>
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">Resource Sharing Marketplace</h1>
+          </div>
+        </div>
+      </div>
+
       {/* Back to Home Button */}
-      <div className="fixed top-4 left-4 z-50">
+      <div className="fixed top-6 left-6 z-50">
         <Button
-          onClick={() => (window.location.href = "/")}
-          className="bg-gradient-to-r from-orange-500 to-green-600 hover:from-orange-600 hover:to-green-700 text-white shadow-lg rounded-full w-12 h-12 p-0"
+          onClick={() => setCurrentPage("home")}
+          className="bg-gradient-to-r from-orange-500 to-green-600 hover:from-orange-600 hover:to-green-700 text-white shadow-lg rounded-full w-14 h-14 p-0 flex items-center justify-center"
+          aria-label="Back to Home"
         >
-          <HomeIcon className="w-5 h-5" />
+          <HomeIcon className="w-6 h-6" />
         </Button>
       </div>
       {/* Header */}

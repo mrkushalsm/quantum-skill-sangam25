@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Shield,
@@ -12,16 +11,12 @@ import {
   Phone,
   ShoppingCart,
   MessageSquare,
-  CheckCircle,
   Star,
   ArrowRight,
   Menu,
   X,
-  Heart,
   Clock,
-  Award,
   Globe,
-  Zap,
   Lock,
   Building,
   Flag,
@@ -29,11 +24,24 @@ import {
   LogIn,
   LogOut,
   User,
+  Heart,
+  Award,
+  CheckCircle,
+  Zap,
+  TrendingUp,
+  GraduationCap,
+  Home,
+  Banknote,
+  Calendar,
+  Download,
+  Eye,
+  HomeIcon,
 } from "lucide-react"
-import ResourceMarketplace from "./resource-marketplace"
-import GrievanceSystem from "./grievance-system"
-import EmergencyNetwork from "./emergency-network"
+import ResourceMarketplace from "./resource-marketplace.jsx"
+import GrievanceSystem from "./grievance-system.jsx"
+import EmergencyNetwork from "./emergency-network.jsx"
 import AuthModal from "./auth-modal"
+import WelfareSchemes from "./welfare-schemes"
 
 const HomePage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -75,11 +83,13 @@ const HomePage = () => {
       case "home":
         return renderHomePage()
       case "marketplace":
-        return <ResourceMarketplace />
+        return <ResourceMarketplace setCurrentPage={setCurrentPage} />
       case "grievance":
-        return <GrievanceSystem />
+        return <GrievanceSystem setCurrentPage={setCurrentPage} />
       case "emergency":
-        return <EmergencyNetwork />
+        return <EmergencyNetwork setCurrentPage={setCurrentPage} />
+      case "welfare-schemes":
+        return <WelfareSchemes setCurrentPage={setCurrentPage} />
       default:
         return renderHomePage()
     }
@@ -114,6 +124,7 @@ const HomePage = () => {
         "Comprehensive catalog of welfare schemes with eligibility checker, application system, and real-time status tracking.",
       color: "bg-green-600",
       bgColor: "bg-green-50",
+      page: "welfare-schemes",
     },
     {
       icon: Phone,
@@ -122,6 +133,7 @@ const HomePage = () => {
         "SOS features, medical emergency connections, and comprehensive family support network for critical situations.",
       color: "bg-red-600",
       bgColor: "bg-red-50",
+      page: "emergency",
     },
     {
       icon: ShoppingCart,
@@ -130,6 +142,7 @@ const HomePage = () => {
         "Exchange books, equipment, and housing resources with integrated messaging system for community support.",
       color: "bg-blue-600",
       bgColor: "bg-blue-50",
+      page: "marketplace",
     },
     {
       icon: MessageSquare,
@@ -138,37 +151,7 @@ const HomePage = () => {
         "Transparent complaint filing with priority classification, tracking, and resolution management system.",
       color: "bg-purple-600",
       bgColor: "bg-purple-50",
-    },
-  ]
-
-  const benefits = [
-    {
-      icon: Clock,
-      title: "Faster Processing",
-      description: "Reduce application processing time significantly",
-      stat: "70%",
-      color: "text-orange-600",
-    },
-    {
-      icon: Globe,
-      title: "24/7 Accessibility",
-      description: "Access welfare services anytime, anywhere",
-      stat: "24/7",
-      color: "text-green-600",
-    },
-    {
-      icon: Users,
-      title: "Community Network",
-      description: "Connect with military families nationwide",
-      stat: "50K+",
-      color: "text-blue-600",
-    },
-    {
-      icon: Lock,
-      title: "Security Compliance",
-      description: "Military-grade security for all transactions",
-      stat: "100%",
-      color: "text-purple-600",
+      page: "grievance",
     },
   ]
 
@@ -263,7 +246,6 @@ const HomePage = () => {
                     { name: "Features", id: "features" },
                     { name: "Benefits", id: "benefits" },
                     { name: "About", id: "about" },
-                    { name: "Contact", id: "contact" },
                   ].map((item) => (
                     <motion.button
                       key={item.name}
@@ -331,7 +313,6 @@ const HomePage = () => {
                   { name: "Features", id: "features" },
                   { name: "Benefits", id: "benefits" },
                   { name: "About", id: "about" },
-                  { name: "Contact", id: "contact" },
                 ].map((item) => (
                   <button
                     key={item.name}
@@ -474,6 +455,7 @@ const HomePage = () => {
                 </motion.div>
               </motion.div>
 
+              {/* Animated Dashboard Section */}
               <motion.div
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -562,214 +544,199 @@ const HomePage = () => {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-24 bg-white">
+        <section id="features" className="py-20 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="text-center mb-20"
-            >
-              <Badge className="mb-6 bg-orange-100 text-orange-800 px-4 py-2 text-sm font-semibold">
-                Platform Features
-              </Badge>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                Comprehensive Welfare Management System
-              </h2>
-              <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
-                Advanced digital infrastructure designed specifically for Indian Armed Forces welfare management,
-                community support, and transparent service delivery.
-              </p>
-            </motion.div>
-
             <motion.div
               variants={staggerContainer}
               initial="initial"
               whileInView="animate"
-              viewport={{ once: true }}
-              className="grid md:grid-cols-2 lg:grid-cols-2 gap-8"
+              viewport={{ once: true, amount: 0.2 }}
+              className="space-y-12"
             >
-              {features.map((feature, index) => (
-                <motion.div key={index} variants={fadeInUp} whileHover={{ y: -10 }} className="group">
-                  <Card
-                    className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white cursor-pointer"
-                    onClick={() => {
-                      if (feature.title === "Emergency Contact Network") {
-                        setCurrentPage("emergency")
-                      } else if (feature.title === "Resource Sharing Marketplace") {
-                        setCurrentPage("marketplace")
-                      } else if (feature.title === "Grievance Redressal System") {
-                        setCurrentPage("grievance")
-                      }
-                    }}
+              <motion.div variants={fadeInUp} className="text-center">
+                <h2 className="text-3xl font-bold text-gray-900">Key Features</h2>
+                <p className="mt-4 text-xl text-gray-700">
+                  Explore the core functionalities designed to enhance welfare management and community support.
+                </p>
+              </motion.div>
+
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {features.map((feature, index) => (
+                  <motion.div
+                    key={index}
+                    variants={fadeInUp}
+                    className="bg-white rounded-2xl shadow-xl overflow-hidden"
+                    {...scaleOnHover}
+                    onClick={() => setCurrentPage(feature.page)}
                   >
-                    <CardContent className="p-8">
-                      <div className="space-y-6">
-                        <motion.div
-                          whileHover={{ scale: 1.1, rotate: 5 }}
-                          className={`w-20 h-20 ${feature.color} rounded-2xl flex items-center justify-center mb-6 shadow-lg`}
-                        >
-                          <feature.icon className="w-10 h-10 text-white" />
-                        </motion.div>
-
-                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-orange-600 transition-colors leading-tight">
-                          {feature.title}
-                        </h3>
-
-                        <p className="text-gray-600 leading-relaxed">{feature.description}</p>
-
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          whileHover={{ opacity: 1 }}
-                          className="flex items-center text-orange-600 font-semibold"
-                        >
-                          Explore Feature
-                          <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                        </motion.div>
+                    <div className={`p-6 ${feature.bgColor}`}>
+                      <div
+                        className={`w-12 h-12 rounded-full flex items-center justify-center text-white ${feature.color}`}
+                      >
+                        <feature.icon className="h-6 w-6" />
                       </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+                    </div>
+                    <div className="p-6">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
+                      <p className="text-gray-600">{feature.description}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </motion.div>
           </div>
         </section>
 
-        {/* Benefits Section */}
-        <section id="benefits" className="py-24 bg-gradient-to-br from-orange-50 via-white to-green-50">
+        {/* Transforming Military Welfare Services Section */}
+        <section id="benefits" className="py-20 bg-gradient-to-br from-gray-50 to-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="text-center mb-20"
-            >
-              <Badge className="mb-6 bg-green-100 text-green-800 px-4 py-2 text-sm font-semibold">
-                Measurable Impact
-              </Badge>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                Transforming Military Welfare Services
-              </h2>
-              <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
-                Quantifiable improvements in service delivery, accessibility, and community engagement for our armed
-                forces personnel and their families.
-              </p>
-            </motion.div>
-
             <motion.div
               variants={staggerContainer}
               initial="initial"
               whileInView="animate"
-              viewport={{ once: true }}
-              className="grid md:grid-cols-2 lg:grid-cols-4 gap-8"
+              viewport={{ once: true, amount: 0.2 }}
+              className="space-y-12"
             >
-              {benefits.map((benefit, index) => (
-                <motion.div key={index} variants={fadeInUp} whileHover={{ scale: 1.05 }} className="text-center">
-                  <Card className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white/90 backdrop-blur-sm">
-                    <CardContent className="p-8">
-                      <motion.div
-                        whileHover={{ scale: 1.2, rotate: 10 }}
-                        className="w-20 h-20 bg-gradient-to-br from-orange-500 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg"
-                      >
-                        <benefit.icon className="w-10 h-10 text-white" />
-                      </motion.div>
-
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        whileInView={{ scale: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.2 + index * 0.1, type: "spring" }}
-                        className={`text-5xl font-bold ${benefit.color} mb-4`}
-                      >
-                        {benefit.stat}
-                      </motion.div>
-
-                      <h3 className="text-xl font-bold text-gray-900 mb-3">{benefit.title}</h3>
-
-                      <p className="text-gray-600 leading-relaxed">{benefit.description}</p>
-                    </CardContent>
-                  </Card>
+              <motion.div variants={fadeInUp} className="text-center">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="mb-6"
+                >
+                  <Badge className="bg-green-100 text-green-800 hover:bg-green-200 px-4 py-2 text-sm font-semibold rounded-full">
+                    Measurable Impact
+                  </Badge>
                 </motion.div>
-              ))}
+
+                <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+                  Transforming Military Welfare Services
+                </h2>
+                <p className="text-xl text-gray-700 max-w-4xl mx-auto leading-relaxed">
+                  Quantifiable improvements in service delivery, accessibility, and community engagement for our
+                  armed forces personnel and their families.
+                </p>
+              </motion.div>
+
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mt-16">
+                {[
+                  {
+                    icon: Clock,
+                    stat: "70%",
+                    title: "Faster Processing",
+                    description: "Reduce application processing time significantly",
+                    color: "text-orange-500",
+                    iconBg: "bg-gradient-to-br from-orange-400 to-green-500",
+                  },
+                  {
+                    icon: Globe,
+                    stat: "24/7",
+                    title: "24/7 Accessibility",
+                    description: "Access welfare services anytime, anywhere",
+                    color: "text-green-500",
+                    iconBg: "bg-gradient-to-br from-orange-400 to-green-500",
+                  },
+                  {
+                    icon: Users,
+                    stat: "50K+",
+                    title: "Community Network",
+                    description: "Connect with military families nationwide",
+                    color: "text-blue-500",
+                    iconBg: "bg-gradient-to-br from-orange-400 to-green-500",
+                  },
+                  {
+                    icon: Lock,
+                    stat: "100%",
+                    title: "Security Compliance",
+                    description: "Military-grade security for all transactions",
+                    color: "text-purple-500",
+                    iconBg: "bg-gradient-to-br from-orange-400 to-green-500",
+                  },
+                ].map((metric, index) => (
+                  <motion.div
+                    key={index}
+                    variants={fadeInUp}
+                    className="text-center group"
+                  >
+                    <motion.div
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                      transition={{ duration: 0.3 }}
+                      className={`w-20 h-20 ${metric.iconBg} rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg group-hover:shadow-xl transition-shadow`}
+                    >
+                      <metric.icon className="w-10 h-10 text-white" />
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      whileInView={{ scale: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.1 + 0.3, type: "spring", stiffness: 200 }}
+                      className={`text-5xl font-bold ${metric.color} mb-3`}
+                    >
+                      {metric.stat}
+                    </motion.div>
+
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                      {metric.title}
+                    </h3>
+
+                    <p className="text-gray-600 leading-relaxed">
+                      {metric.description}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
             </motion.div>
           </div>
         </section>
 
         {/* Testimonials Section */}
-        <section id="about" className="py-24 bg-white">
+        <section id="about" className="py-20 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="text-center mb-20"
-            >
-              <Badge className="mb-6 bg-blue-100 text-blue-800 px-4 py-2 text-sm font-semibold">
-                User Testimonials
-              </Badge>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                Trusted by Military Families Across India
-              </h2>
-              <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
-                Real experiences from our brave servicemen and their families who are already benefiting from our
-                comprehensive welfare platform.
-              </p>
-            </motion.div>
-
             <motion.div
               variants={staggerContainer}
               initial="initial"
               whileInView="animate"
-              viewport={{ once: true }}
-              className="grid md:grid-cols-3 gap-8"
+              viewport={{ once: true, amount: 0.2 }}
+              className="space-y-12"
             >
-              {testimonials.map((testimonial, index) => (
-                <motion.div key={index} variants={fadeInUp} whileHover={{ y: -5 }} className="group">
-                  <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white">
-                    <CardContent className="p-8">
-                      <div className="space-y-6">
-                        <div className="flex items-center space-x-1 mb-4">
-                          {[...Array(testimonial.rating)].map((_, i) => (
-                            <motion.div
-                              key={i}
-                              initial={{ opacity: 0, scale: 0 }}
-                              whileInView={{ opacity: 1, scale: 1 }}
-                              viewport={{ once: true }}
-                              transition={{ delay: 0.1 * i }}
-                            >
-                              <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                            </motion.div>
-                          ))}
-                        </div>
+              <motion.div variants={fadeInUp} className="text-center">
+                <h2 className="text-3xl font-bold text-gray-900">Testimonials</h2>
+                <p className="mt-4 text-xl text-gray-700">
+                  Hear from our users about their experiences with the platform.
+                </p>
+              </motion.div>
 
-                        <p className="text-gray-700 italic leading-relaxed text-lg">"{testimonial.content}"</p>
-
-                        <div className="border-t pt-6 flex items-center space-x-4">
-                          <img
-                            src={testimonial.image || "/placeholder.svg"}
-                            alt={testimonial.name}
-                            className="w-12 h-12 rounded-full border-2 border-orange-200"
-                          />
-                          <div>
-                            <p className="font-bold text-gray-900 text-lg">{testimonial.name}</p>
-                            <p className="text-sm text-orange-600 font-semibold">{testimonial.rank}</p>
-                            <p className="text-xs text-gray-500">{testimonial.unit}</p>
-                          </div>
-                        </div>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {testimonials.map((testimonial, index) => (
+                  <motion.div key={index} variants={fadeInUp} className="bg-white rounded-2xl shadow-md p-6">
+                    <div className="flex items-center mb-4">
+                      <img
+                        src={testimonial.image || "/placeholder.svg"}
+                        alt={testimonial.name}
+                        className="w-12 h-12 rounded-full mr-4"
+                      />
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900">{testimonial.name}</h4>
+                        <p className="text-sm text-gray-600">{testimonial.rank}</p>
+                        <p className="text-sm text-gray-600">{testimonial.unit}</p>
                       </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+                    </div>
+                    <div className="flex items-center space-x-1 mb-4">
+                      {[...Array(testimonial.rating)].map((_, i) => (
+                        <Star key={i} className="h-5 w-5 text-yellow-500" />
+                      ))}
+                    </div>
+                    <p className="text-gray-700 italic">"{testimonial.content}"</p>
+                  </motion.div>
+                ))}
+              </div>
             </motion.div>
           </div>
         </section>
 
         {/* CTA Section */}
-        <section id="contact" className="py-24 bg-gradient-to-r from-orange-500 to-green-600 relative overflow-hidden">
+        <section className="py-24 bg-gradient-to-r from-orange-500 to-green-600 relative overflow-hidden">
           <motion.div
             animate={{
               scale: [1, 1.1, 1],
@@ -834,11 +801,11 @@ const HomePage = () => {
                 <motion.div {...scaleOnHover}>
                   <Button
                     size="lg"
-                    variant="outline"
-                    className="border-2 border-white text-white hover:bg-white hover:text-orange-600 px-10 py-4 text-xl font-bold"
+                    className="bg-white text-orange-600 hover:bg-gray-100 px-10 py-4 text-xl font-bold shadow-xl"
                     onClick={() => scrollToSection("about")}
                   >
                     Learn More
+                    <ArrowRight className="ml-3 h-6 w-6" />
                   </Button>
                 </motion.div>
               </motion.div>
@@ -918,24 +885,36 @@ const HomePage = () => {
                 <h3 className="font-bold mb-6 text-lg">Services</h3>
                 <ul className="space-y-3 text-gray-400">
                   <li>
-                    <a href="#" className="hover:text-white transition-colors hover:text-orange-400">
+                    <button
+                      onClick={() => setCurrentPage("welfare-schemes")}
+                      className="hover:text-white transition-colors hover:text-orange-400"
+                    >
                       Welfare Schemes
-                    </a>
+                    </button>
                   </li>
                   <li>
-                    <a href="#" className="hover:text-white transition-colors hover:text-orange-400">
+                    <button
+                      onClick={() => setCurrentPage("emergency")}
+                      className="hover:text-white transition-colors hover:text-orange-400"
+                    >
                       Emergency Support
-                    </a>
+                    </button>
                   </li>
                   <li>
-                    <a href="#" className="hover:text-white transition-colors hover:text-orange-400">
+                    <button
+                      onClick={() => setCurrentPage("marketplace")}
+                      className="hover:text-white transition-colors hover:text-orange-400"
+                    >
                       Resource Sharing
-                    </a>
+                    </button>
                   </li>
                   <li>
-                    <a href="#" className="hover:text-white transition-colors hover:text-orange-400">
+                    <button
+                      onClick={() => setCurrentPage("grievance")}
+                      className="hover:text-white transition-colors hover:text-orange-400"
+                    >
                       Grievance Portal
-                    </a>
+                    </button>
                   </li>
                 </ul>
               </div>
