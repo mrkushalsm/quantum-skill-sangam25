@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-// Add the import for HomeIcon
 import {
   Shield,
   Phone,
@@ -31,7 +30,7 @@ import {
   HomeIcon,
 } from "lucide-react"
 
-const EmergencyNetwork = () => {
+const EmergencyNetwork = ({ setCurrentPage }) => {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [sosActive, setSosActive] = useState(false)
   const [location, setLocation] = useState(null)
@@ -218,14 +217,15 @@ const EmergencyNetwork = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-green-50">
-      {/* Add the back button */}
-      <div className="fixed top-4 left-4 z-50">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50">
+      {/* Back to Home Button */}
+      <div className="fixed top-6 left-6 z-50">
         <Button
-          onClick={() => (window.location.href = "/")}
-          className="bg-gradient-to-r from-orange-500 to-green-600 hover:from-orange-600 hover:to-green-700 text-white shadow-lg rounded-full w-12 h-12 p-0"
+          onClick={() => setCurrentPage("home")}
+          className="bg-gradient-to-r from-orange-500 to-green-600 hover:from-orange-600 hover:to-green-700 text-white shadow-lg rounded-full w-14 h-14 p-0 flex items-center justify-center"
+          aria-label="Back to Home"
         >
-          <HomeIcon className="w-5 h-5" />
+          <HomeIcon className="w-6 h-6" />
         </Button>
       </div>
       {/* Header */}

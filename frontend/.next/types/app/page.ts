@@ -1,4 +1,4 @@
-// File: C:\Users\mrkus\Kushal Code\Projects\quantum-skill-sangam25\frontend\app\page.tsx
+// File: D:\SKill_sangam\quantum-skill-sangam25\frontend\app\page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
