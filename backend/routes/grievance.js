@@ -667,4 +667,354 @@ router.put('/bulk/status',
   }
 );
 
+// Tickets API endpoints (aliases for frontend compatibility)
+router.get('/tickets', authenticateUser, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status, priority, category } = req.query;
+    const user = await User.findOne({ firebaseUid: req.user.uid });
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
+
+    // Build query
+    const query = { userId: user._id };
+    if (status) query.status = status;
+    if (priority) query.priority = priority;
+    if (category) query.category = category;
+
+    const options = {
+      skip: (page - 1) * limit,
+      limit: parseInt(limit),
+      sort: { createdAt: -1 }
+    };
+
+    const tickets = await Grievance.find(query, null, options)
+      .populate('userId', 'coreData.personalInfo.firstName coreData.personalInfo.lastName')
+      .lean();
+
+    const total = await Grievance.countDocuments(query);
+
+    // Format response for frontend
+    const formattedTickets = tickets.map(ticket => ({
+      id: ticket._id,
+      ticketId: ticket.ticketId,
+      title: ticket.title,
+      description: ticket.description,
+      category: ticket.category,
+      priority: ticket.priority,
+      status: ticket.status,
+      submittedBy: `${ticket.userId?.coreData?.personalInfo?.firstName || ''} ${ticket.userId?.coreData?.personalInfo?.lastName || ''}`.trim(),
+      submittedDate: ticket.createdAt.toISOString().split('T')[0],
+      lastUpdate: ticket.updatedAt.toISOString().split('T')[0],
+      assignedTo: ticket.assignedTo,
+      expectedResolution: ticket.expectedResolution,
+      attachments: ticket.attachments?.length || 0,
+      resolution: ticket.resolution,
+      createdAt: ticket.createdAt,
+      updatedAt: ticket.updatedAt
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        tickets: formattedTickets,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching tickets:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch tickets' 
+    });
+  }
+});
+
+router.post('/tickets', 
+  authenticateUser,
+  uploadGrievanceAttachment,
+  validateGrievance,
+  async (req, res) => {
+    try {
+      const user = await User.findOne({ firebaseUid: req.user.uid });
+      
+      if (!user) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'User not found' 
+        });
+      }
+
+      // Parse ticketData if it's sent as form data
+      let ticketData = req.body;
+      if (typeof req.body.ticketData === 'string') {
+        ticketData = JSON.parse(req.body.ticketData);
+      }
+
+      // Process uploaded attachments
+      const attachments = req.files ? req.files.map(file => ({
+        filename: file.originalname,
+        path: `/uploads/documents/${file.filename}`,
+        size: file.size,
+        mimeType: file.mimetype,
+        uploadedAt: new Date()
+      })) : [];
+
+      // Generate ticket ID
+      const ticketId = `GRV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
+
+      const grievance = new Grievance({
+        ticketId,
+        title: ticketData.title,
+        description: ticketData.description,
+        category: ticketData.category,
+        priority: ticketData.priority,
+        userId: user._id,
+        attachments,
+        status: 'pending',
+        submittedAt: new Date()
+      });
+
+      await grievance.save();
+
+      // Create notification for admins
+      try {
+        await createNotification({
+          type: 'new_grievance',
+          title: 'New Grievance Submitted',
+          message: `New grievance "${ticketData.title}" submitted by ${user.coreData?.personalInfo?.firstName || 'User'}`,
+          recipients: ['admin'],
+          data: { grievanceId: grievance._id }
+        });
+      } catch (notifError) {
+        console.error('Error creating notification:', notifError);
+      }
+
+      res.status(201).json({
+        success: true,
+        message: 'Grievance submitted successfully',
+        data: {
+          id: grievance._id,
+          ticketId: grievance.ticketId,
+          status: grievance.status
+        }
+      });
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to submit grievance' 
+      });
+    }
+  }
+);
+
+router.get('/tickets/:id', authenticateUser, async (req, res) => {
+  try {
+    const user = await User.findOne({ firebaseUid: req.user.uid });
+    const grievance = await Grievance.findById(req.params.id)
+      .populate('userId', 'coreData.personalInfo.firstName coreData.personalInfo.lastName');
+    
+    if (!grievance) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Grievance not found' 
+      });
+    }
+
+    // Check ownership or admin role
+    if (grievance.userId._id.toString() !== user._id.toString() && 
+        !user.coreData?.role?.includes('admin')) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied' 
+      });
+    }
+
+    res.json({
+      success: true,
+      data: grievance
+    });
+  } catch (error) {
+    console.error('Error fetching ticket:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch ticket' 
+    });
+  }
+});
+
+router.post('/tickets/:id/comments', 
+  authenticateUser,
+  uploadGrievanceAttachment,
+  async (req, res) => {
+    try {
+      const user = await User.findOne({ firebaseUid: req.user.uid });
+      const grievance = await Grievance.findById(req.params.id);
+      
+      if (!grievance) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Grievance not found' 
+        });
+      }
+
+      // Check ownership or admin role
+      if (grievance.userId.toString() !== user._id.toString() && 
+          !user.coreData?.role?.includes('admin')) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Access denied' 
+        });
+      }
+
+      // Process uploaded attachments
+      const attachments = req.files ? req.files.map(file => ({
+        filename: file.originalname,
+        path: `/uploads/documents/${file.filename}`,
+        size: file.size,
+        mimeType: file.mimetype,
+        uploadedAt: new Date()
+      })) : [];
+
+      const comment = {
+        userId: user._id,
+        message: req.body.comment,
+        attachments,
+        createdAt: new Date()
+      };
+
+      grievance.communications = grievance.communications || [];
+      grievance.communications.push(comment);
+      await grievance.save();
+
+      res.json({
+        success: true,
+        message: 'Comment added successfully',
+        data: comment
+      });
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to add comment' 
+      });
+    }
+  }
+);
+
+router.get('/tickets/:id/comments', authenticateUser, async (req, res) => {
+  try {
+    const user = await User.findOne({ firebaseUid: req.user.uid });
+    const grievance = await Grievance.findById(req.params.id)
+      .populate('communications.userId', 'coreData.personalInfo.firstName coreData.personalInfo.lastName');
+    
+    if (!grievance) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Grievance not found' 
+      });
+    }
+
+    // Check ownership or admin role
+    if (grievance.userId.toString() !== user._id.toString() && 
+        !user.coreData?.role?.includes('admin')) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied' 
+      });
+    }
+
+    res.json({
+      success: true,
+      data: grievance.communications || []
+    });
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch comments' 
+    });
+  }
+});
+
+router.put('/tickets/:id/status', 
+  authenticateUser,
+  authorizeRoles(['admin']),
+  async (req, res) => {
+    try {
+      const { status, resolution } = req.body;
+      const grievance = await Grievance.findById(req.params.id);
+      
+      if (!grievance) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Grievance not found' 
+        });
+      }
+
+      grievance.status = status;
+      if (resolution) {
+        grievance.resolution = resolution;
+      }
+      
+      await grievance.save();
+
+      res.json({
+        success: true,
+        message: 'Status updated successfully',
+        data: grievance
+      });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to update status' 
+      });
+    }
+  }
+);
+
+router.put('/tickets/:id/assign', 
+  authenticateUser,
+  authorizeRoles(['admin']),
+  async (req, res) => {
+    try {
+      const { assignedTo } = req.body;
+      const grievance = await Grievance.findById(req.params.id);
+      
+      if (!grievance) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Grievance not found' 
+        });
+      }
+
+      grievance.assignedTo = assignedTo;
+      await grievance.save();
+
+      res.json({
+        success: true,
+        message: 'Ticket assigned successfully',
+        data: grievance
+      });
+    } catch (error) {
+      console.error('Error assigning ticket:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to assign ticket' 
+      });
+    }
+  }
+);
+
 module.exports = router;

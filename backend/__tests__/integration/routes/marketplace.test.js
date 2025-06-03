@@ -2,7 +2,7 @@ const request = require('supertest');
 const express = require('express');
 const mongoose = require('mongoose');
 const User = require('../../../models/User');
-const MarketplaceListing = require('../../../models/MarketplaceListing');
+const MarketplaceItem = require('../../../models/MarketplaceItem');
 const marketplaceRoutes = require('../../../routes/marketplace');
 const errorHandler = require('../../../middleware/errorHandler');
 
@@ -97,7 +97,7 @@ describe('Marketplace Routes Integration Tests', () => {
       expect(response.body.data.listing.sellerId).toBe(testUser._id.toString());
       
       // Verify listing was created in database
-      const createdListing = await MarketplaceListing.findOne({ 
+      const createdListing = await MarketplaceItem.findOne({ 
         title: validListingData.title,
         sellerId: testUser._id 
       });
@@ -223,7 +223,7 @@ describe('Marketplace Routes Integration Tests', () => {
 
     beforeEach(async () => {
       // Create a test marketplace listing
-      testListing = new MarketplaceListing({
+      testListing = new MarketplaceItem({
         title: 'Test Marketplace Item',
         description: 'Test marketplace description',
         category: 'electronics',
@@ -250,7 +250,7 @@ describe('Marketplace Routes Integration Tests', () => {
 
     test('should filter listings by category', async () => {
       // Create listing with different category
-      await new MarketplaceListing({
+      await new MarketplaceItem({
         title: 'Furniture Item',
         description: 'Test furniture description',
         category: 'furniture',
@@ -315,7 +315,7 @@ describe('Marketplace Routes Integration Tests', () => {
 
     test('should sort listings by price (low to high)', async () => {
       // Create multiple listings with different prices
-      await new MarketplaceListing({
+      await new MarketplaceItem({
         title: 'Cheap Item',
         description: 'Low price item',
         category: 'electronics',
@@ -325,7 +325,7 @@ describe('Marketplace Routes Integration Tests', () => {
         sellerId: testUser._id
       }).save();
 
-      await new MarketplaceListing({
+      await new MarketplaceItem({
         title: 'Expensive Item',
         description: 'High price item',
         category: 'electronics',
@@ -351,7 +351,7 @@ describe('Marketplace Routes Integration Tests', () => {
     test('should paginate results correctly', async () => {
       // Create multiple listings
       for (let i = 0; i < 15; i++) {
-        await new MarketplaceListing({
+        await new MarketplaceItem({
           title: `Test Item ${i}`,
           description: `Test description ${i}`,
           category: 'electronics',
@@ -386,7 +386,7 @@ describe('Marketplace Routes Integration Tests', () => {
     let testListing;
 
     beforeEach(async () => {
-      testListing = new MarketplaceListing({
+      testListing = new MarketplaceItem({
         title: 'Test Marketplace Item',
         description: 'Test marketplace description',
         category: 'electronics',
@@ -456,7 +456,7 @@ describe('Marketplace Routes Integration Tests', () => {
     let testListing;
 
     beforeEach(async () => {
-      testListing = new MarketplaceListing({
+      testListing = new MarketplaceItem({
         title: 'Test Marketplace Item',
         description: 'Test marketplace description',
         category: 'electronics',
@@ -552,7 +552,7 @@ describe('Marketplace Routes Integration Tests', () => {
     let testListing;
 
     beforeEach(async () => {
-      testListing = new MarketplaceListing({
+      testListing = new MarketplaceItem({
         title: 'Test Marketplace Item',
         description: 'Test marketplace description',
         category: 'electronics',
@@ -574,7 +574,7 @@ describe('Marketplace Routes Integration Tests', () => {
       expect(response.body.message).toBe('Listing deleted successfully');
       
       // Verify listing was deleted from database
-      const deletedListing = await MarketplaceListing.findById(testListing._id);
+      const deletedListing = await MarketplaceItem.findById(testListing._id);
       expect(deletedListing).toBeNull();
     });
 
@@ -587,7 +587,7 @@ describe('Marketplace Routes Integration Tests', () => {
       expect(response.body.success).toBe(true);
       
       // Verify listing was deleted
-      const deletedListing = await MarketplaceListing.findById(testListing._id);
+      const deletedListing = await MarketplaceItem.findById(testListing._id);
       expect(deletedListing).toBeNull();
     });
 
@@ -625,7 +625,7 @@ describe('Marketplace Routes Integration Tests', () => {
     let testListing;
 
     beforeEach(async () => {
-      testListing = new MarketplaceListing({
+      testListing = new MarketplaceItem({
         title: 'Test Marketplace Item',
         description: 'Test marketplace description',
         category: 'electronics',
@@ -723,7 +723,7 @@ describe('Marketplace Routes Integration Tests', () => {
   describe('GET /marketplace/my-listings', () => {
     beforeEach(async () => {
       // Create listings for the test user
-      await new MarketplaceListing({
+      await new MarketplaceItem({
         title: 'My Test Item 1',
         description: 'My first test item',
         category: 'electronics',
@@ -733,7 +733,7 @@ describe('Marketplace Routes Integration Tests', () => {
         sellerId: testUser._id
       }).save();
 
-      await new MarketplaceListing({
+      await new MarketplaceItem({
         title: 'My Test Item 2',
         description: 'My second test item',
         category: 'furniture',
@@ -744,7 +744,7 @@ describe('Marketplace Routes Integration Tests', () => {
       }).save();
 
       // Create listing for another user
-      await new MarketplaceListing({
+      await new MarketplaceItem({
         title: 'Other Users Item',
         description: 'Other users item',
         category: 'electronics',
@@ -814,7 +814,7 @@ describe('Marketplace Routes Integration Tests', () => {
   describe('GET /marketplace/statistics', () => {
     beforeEach(async () => {
       // Create test listings for statistics
-      await new MarketplaceListing({
+      await new MarketplaceItem({
         title: 'Electronics Item',
         description: 'Electronics description',
         category: 'electronics',
@@ -824,7 +824,7 @@ describe('Marketplace Routes Integration Tests', () => {
         sellerId: testUser._id
       }).save();
 
-      await new MarketplaceListing({
+      await new MarketplaceItem({
         title: 'Furniture Item',
         description: 'Furniture description',
         category: 'furniture',

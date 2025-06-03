@@ -28,8 +28,15 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:3001"],
-    methods: ["GET", "POST", "PUT", "DELETE"]
+    origin: [
+      "http://localhost:3000", 
+      "http://localhost:3001",
+      "http://localhost:3002", 
+      "http://localhost:3003", 
+      "http://localhost:5173"
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
   }
 });
 
@@ -65,11 +72,29 @@ app.use(helmet({
 
 // CORS configuration
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: [
+    'http://localhost:3000', 
+    'http://localhost:3001',
+    'http://localhost:3002', 
+    'http://localhost:3003', 
+    'http://localhost:5173'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Access-Control-Allow-Origin']
 }));
+
+// Debug middleware for CORS requests
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log('Origin:', req.get('Origin'));
+  console.log('Headers:', req.headers);
+  if (req.method === 'OPTIONS') {
+    console.log('Preflight request detected');
+  }
+  next();
+});
 
 // Logging
 if (process.env.NODE_ENV === 'development') {

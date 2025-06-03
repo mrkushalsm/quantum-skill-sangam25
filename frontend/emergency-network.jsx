@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { emergencyApi } from "@/lib/api"
 import { motion, AnimatePresence } from "framer-motion"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -553,7 +555,7 @@ const EmergencyNetwork = ({ setCurrentPage }) => {
                   <DialogHeader>
                     <DialogTitle>Add Emergency Contact</DialogTitle>
                   </DialogHeader>
-                  <AddContactForm onClose={() => setShowAddContact(false)} />
+                  <AddContactForm onClose={() => setShowAddContact(false)} refreshContacts={() => {}} />
                 </DialogContent>
               </Dialog>
             </div>
@@ -721,19 +723,71 @@ const EmergencyNetwork = ({ setCurrentPage }) => {
   )
 }
 
-const AddContactForm = ({ onClose }) => {
-  const [formData, setFormData] = useState({
-    name: "",
-    relation: "",
-    phone: "",
-    location: "",
-    emergencyContact: false,
-  })
+const AddContactForm = ({ onClose, refreshContacts }) => {
+  const [contactData, setContactData] = useState({
+    name: '',
+    relation: '',
+    phone: '',
+    location: '',
+    emergencyContact: false
+  });
+  const [submitting, setSubmitting] = useState(false);
+  
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setContactData({
+      ...contactData,
+      [name]: type === 'checkbox' ? checked : value
+    });
+  };
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    console.log("Contact added:", formData)
-    onClose()
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    
+    try {
+      // Check if user is logged in before submitting
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error("You must be logged in to add contacts");
+        setSubmitting(false);
+        return;
+      }
+      
+      console.log("Contact added: ", contactData);
+      
+      // Use the API function with error handling
+      const response = await emergencyApi.addContact({
+        name: contactData.name,
+        relationship: contactData.relation,
+        phoneNumber: contactData.phone,
+        isPrimary: contactData.emergencyContact
+      });
+      
+      console.log('Contact added successfully:', response.data);
+      
+      // Reset form
+      setContactData({
+        name: '',
+        relation: '',
+        phone: '',
+        location: '',
+        emergencyContact: false
+      });
+      
+      // Close form and show success message
+      setSubmitting(false);
+      onClose();
+      toast.success("Contact added successfully!");
+      
+      // Refresh contacts list
+      if (refreshContacts) refreshContacts();
+    } catch (error) {
+      console.error('Error adding contact:', error);
+      const errorMessage = error.response?.data?.message || 'Error adding contact. Please try again.';
+      toast.error(errorMessage);
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -742,19 +796,23 @@ const AddContactForm = ({ onClose }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
           <Input
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            name="name"
+            value={contactData.name}
+            onChange={handleChange}
             placeholder="Contact name"
             required
+            disabled={submitting}
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Relation</label>
           <Input
-            value={formData.relation}
-            onChange={(e) => setFormData({ ...formData, relation: e.target.value })}
+            name="relation"
+            value={contactData.relation}
+            onChange={handleChange}
             placeholder="Spouse, Parent, Friend, etc."
             required
+            disabled={submitting}
           />
         </div>
       </div>
@@ -763,19 +821,23 @@ const AddContactForm = ({ onClose }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
           <Input
-            value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            name="phone"
+            value={contactData.phone}
+            onChange={handleChange}
             placeholder="+91-XXXXX-XXXXX"
             required
+            disabled={submitting}
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
           <Input
-            value={formData.location}
-            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+            name="location"
+            value={contactData.location}
+            onChange={handleChange}
             placeholder="City, Cantonment"
             required
+            disabled={submitting}
           />
         </div>
       </div>
@@ -784,20 +846,32 @@ const AddContactForm = ({ onClose }) => {
         <input
           type="checkbox"
           id="emergencyContact"
-          checked={formData.emergencyContact}
-          onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.checked })}
+          name="emergencyContact"
+          checked={contactData.emergencyContact}
+          onChange={handleChange}
           className="rounded border-gray-300"
+          disabled={submitting}
         />
         <label htmlFor="emergencyContact" className="text-sm text-gray-700">
-          Mark as emergency contact
+          Mark as primary emergency contact
         </label>
       </div>
 
       <div className="flex space-x-4 pt-4">
-        <Button type="submit" className="flex-1 bg-gradient-to-r from-orange-500 to-green-600">
-          Add Contact
+        <Button 
+          type="submit" 
+          className="flex-1 bg-gradient-to-r from-orange-500 to-green-600"
+          disabled={submitting}
+        >
+          {submitting ? "Adding..." : "Add Contact"}
         </Button>
-        <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onClose} 
+          className="flex-1"
+          disabled={submitting}
+        >
           Cancel
         </Button>
       </div>

@@ -8,6 +8,52 @@ const Application = require('../models/Application');
 const User = require('../models/User');
 const { createNotification } = require('../utils/notification');
 
+// Root welfare endpoint
+router.get('/', authenticateUser, async (req, res) => {
+  try {
+    const user = req.user;
+    
+    // Get summary statistics for the user
+    const [activeSchemes, userApplications, availableSchemes] = await Promise.all([
+      WelfareScheme.countDocuments({ 
+        isActive: true, 
+        applicationDeadline: { $gte: new Date() } 
+      }),
+      Application.countDocuments({ applicantId: user._id }),
+      WelfareScheme.find({ 
+        isActive: true, 
+        applicationDeadline: { $gte: new Date() },
+        eligibleRoles: { $in: [user.role, 'all'] }
+      }).limit(5).select('title category description')
+    ]);
+    
+    res.json({
+      message: 'Welfare Management System API',
+      user: {
+        name: user.name,
+        role: user.role,
+        service: user.service
+      },
+      summary: {
+        activeSchemes,
+        userApplications,
+        availableSchemes
+      },
+      endpoints: {
+        schemes: '/api/welfare/schemes',
+        applications: '/api/welfare/applications',
+        categories: '/api/welfare/categories',
+        statistics: '/api/welfare/statistics'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Welfare Management System API', 
+      error: error.message 
+    });
+  }
+});
+
 // Get all welfare schemes
 router.get('/schemes', authenticateUser, async (req, res) => {
   try {

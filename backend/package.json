@@ -49,9 +49,9 @@
     "mongodb-memory-server": "^10.1.4",
     "nodemon": "^3.0.1",
     "prettier": "^3.0.2",
+    "socket.io-client": "^4.8.1",
     "supertest": "^7.1.1"
-  },
-  "keywords": [
+  },  "keywords": [
     "armed-forces",
     "welfare",
     "management",
@@ -65,32 +65,5 @@
   "engines": {
     "node": ">=16.0.0",
     "npm": ">=8.0.0"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "setupFilesAfterEnv": [
-      "<rootDir>/test-setup.js"
-    ],
-    "testMatch": [
-      "**/__tests__/**/*.test.js",
-      "**/tests/**/*.test.js"
-    ],
-    "collectCoverageFrom": [
-      "**/*.js",
-      "!**/node_modules/**",
-      "!**/tests/**",
-      "!**/coverage/**",
-      "!**/uploads/**",
-      "!**/logs/**",
-      "!jest.config.js",
-      "!test-*.js"
-    ],
-    "coverageDirectory": "coverage",
-    "coverageReporters": [
-      "text",
-      "lcov",
-      "html"
-    ],
-    "testTimeout": 30000
   }
 }

@@ -8,6 +8,35 @@ const Grievance = require('../models/Grievance');
 const MarketplaceItem = require('../models/MarketplaceItem');
 const EmergencyAlert = require('../models/EmergencyAlert');
 
+// Root dashboard endpoint
+router.get('/', authenticateUser, async (req, res) => {
+  try {
+    const user = req.user;
+    
+    res.json({
+      message: 'Armed Forces Dashboard API',
+      user: {
+        name: user.name,
+        role: user.role,
+        service: user.service,
+        rank: user.rank
+      },
+      endpoints: {
+        overview: '/api/dashboard/overview',
+        statistics: '/api/dashboard/statistics',
+        notifications: '/api/dashboard/notifications',
+        activities: '/api/dashboard/activities'
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Armed Forces Dashboard API', 
+      error: error.message 
+    });
+  }
+});
+
 // Get dashboard overview
 router.get('/overview', authenticateUser, async (req, res) => {
   try {

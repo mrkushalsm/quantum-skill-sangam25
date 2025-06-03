@@ -3,6 +3,16 @@ const emergencyPlugin = require('../plugins/emergency');
 
 // Core schema
 const coreSchema = new mongoose.Schema({
+  firstName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  lastName: {
+    type: String,
+    required: true,
+    trim: true
+  },
   role: {
     type: String,
     enum: ['Admin', 'Officer', 'Family'],
@@ -169,7 +179,9 @@ userSchema.index({ isActive: 1 });
 
 // Virtual for full name
 userSchema.virtual('fullName').get(function() {
-  return `${this.coreData.firstName} ${this.coreData.lastName}`;
+  const firstName = this.coreData?.firstName || '';
+  const lastName = this.coreData?.lastName || '';
+  return `${firstName} ${lastName}`.trim() || 'Unknown User';
 });
 
 // Virtual for applications

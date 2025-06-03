@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { grievanceApi } from "@/lib/api"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -36,15 +37,57 @@ const GrievanceSystem = ({ setCurrentPage }) => {
   const [selectedGrievance, setSelectedGrievance] = useState(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [grievances, setGrievances] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    resolved: 0,
+    highPriority: 0
+  })
+
+  // Load grievances from API
+  useEffect(() => {
+    const loadGrievances = async () => {
+      try {
+        setLoading(true)
+        const response = await grievanceApi.getTickets()
+        const tickets = response.data.tickets || []
+        setGrievances(tickets)
+        
+        // Calculate stats from real data
+        const totalCount = tickets.length
+        const pendingCount = tickets.filter(t => ['pending', 'in_progress', 'under_review'].includes(t.status?.toLowerCase())).length
+        const resolvedCount = tickets.filter(t => t.status?.toLowerCase() === 'resolved').length
+        const highPriorityCount = tickets.filter(t => ['high', 'urgent'].includes(t.priority?.toLowerCase())).length
+        
+        setStats({
+          total: totalCount,
+          pending: pendingCount,
+          resolved: resolvedCount,
+          highPriority: highPriorityCount
+        })
+      } catch (error) {
+        console.error('Error loading grievances:', error)
+        // Fall back to mock data if API fails
+        setGrievances(mockGrievances)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadGrievances()
+  }, [])
 
   const grievanceStats = [
-    { title: "Total Grievances", value: "1,247", change: "+12%", icon: FileText, color: "text-blue-600" },
-    { title: "Pending Review", value: "89", change: "-5%", icon: Clock, color: "text-yellow-600" },
-    { title: "Resolved", value: "1,098", change: "+18%", icon: CheckCircle, color: "text-green-600" },
-    { title: "High Priority", value: "23", change: "+3%", icon: AlertTriangle, color: "text-red-600" },
+    { title: "Total Grievances", value: stats.total.toString(), change: "+12%", icon: FileText, color: "text-blue-600" },
+    { title: "Pending Review", value: stats.pending.toString(), change: "-5%", icon: Clock, color: "text-yellow-600" },
+    { title: "Resolved", value: stats.resolved.toString(), change: "+18%", icon: CheckCircle, color: "text-green-600" },
+    { title: "High Priority", value: stats.highPriority.toString(), change: "+3%", icon: AlertTriangle, color: "text-red-600" },
   ]
 
-  const grievances = [
+  // Mock data as fallback
+  const mockGrievances = [
     {
       id: "GRV-2024-001",
       title: "Medical Facility Access Issue",
@@ -105,16 +148,38 @@ const GrievanceSystem = ({ setCurrentPage }) => {
       assignedTo: "Welfare Officer",
       expectedResolution: "2024-01-28",
       attachments: 1,
-    },
-  ]
+    },  ]
 
   const filteredGrievances = grievances.filter((grievance) => {
     const matchesSearch =
-      grievance.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      grievance.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === "all" || grievance.status.toLowerCase().replace(" ", "-") === statusFilter
+      (grievance.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (grievance.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesStatus = statusFilter === "all" || (grievance.status || '').toLowerCase().replace(" ", "-") === statusFilter
     return matchesSearch && matchesStatus
   })
+
+  const refreshGrievances = async () => {
+    try {
+      const response = await grievanceApi.getTickets()
+      const tickets = response.data.tickets || []
+      setGrievances(tickets)
+      
+      // Update stats
+      const totalCount = tickets.length
+      const pendingCount = tickets.filter(t => ['pending', 'in_progress', 'under_review'].includes((t.status || '').toLowerCase())).length
+      const resolvedCount = tickets.filter(t => (t.status || '').toLowerCase() === 'resolved').length
+      const highPriorityCount = tickets.filter(t => ['high', 'urgent'].includes((t.priority || '').toLowerCase())).length
+      
+      setStats({
+        total: totalCount,
+        pending: pendingCount,
+        resolved: resolvedCount,
+        highPriority: highPriorityCount
+      })
+    } catch (error) {
+      console.error('Error refreshing grievances:', error)
+    }
+  }
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -195,7 +260,10 @@ const GrievanceSystem = ({ setCurrentPage }) => {
                 <DialogHeader>
                   <DialogTitle>File a New Grievance</DialogTitle>
                 </DialogHeader>
-                <NewGrievanceForm onClose={() => setShowNewGrievance(false)} />
+                <NewGrievanceForm 
+                  onClose={() => setShowNewGrievance(false)} 
+                  onSubmitSuccess={refreshGrievances}
+                />
               </DialogContent>
             </Dialog>
           </div>
@@ -262,27 +330,31 @@ const GrievanceSystem = ({ setCurrentPage }) => {
                     View All
                   </Button>
                 </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {grievances.slice(0, 3).map((grievance) => (
-                    <div key={grievance.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h4 className="font-semibold text-gray-900">{grievance.title}</h4>
-                          <Badge className={getPriorityColor(grievance.priority)}>{grievance.priority}</Badge>
-                          <Badge className={getStatusColor(grievance.status)}>{grievance.status}</Badge>
+              </CardHeader>              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center h-32">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {grievances.slice(0, 3).map((grievance) => (
+                      <div key={grievance.id || grievance._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="font-semibold text-gray-900">{grievance.title}</h4>
+                            <Badge className={getPriorityColor(grievance.priority)}>{grievance.priority}</Badge>
+                            <Badge className={getStatusColor(grievance.status)}>{grievance.status}</Badge>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            {grievance.submittedBy || grievance.user?.name} • {grievance.submittedDate || new Date(grievance.createdAt).toLocaleDateString()}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-600">
-                          {grievance.submittedBy} • {grievance.submittedDate}
-                        </p>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={() => setSelectedGrievance(grievance)}>
-                        View Details
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+                        <Button variant="outline" size="sm" onClick={() => setSelectedGrievance(grievance)}>
+                          View Details
+                        </Button>                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -311,12 +383,25 @@ const GrievanceSystem = ({ setCurrentPage }) => {
                   <SelectItem value="resolved">Resolved</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Grievances List */}
+            </div>            {/* Grievances List */}
             <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-4">
               <AnimatePresence>
-                {filteredGrievances.map((grievance) => (
+                {loading ? (
+                  <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : filteredGrievances.length === 0 ? (
+                  <Card className="border-0 shadow-lg">
+                    <CardContent className="p-12 text-center">
+                      <FileText className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No grievances found</h3>
+                      <p className="text-gray-600">
+                        {searchQuery ? 'Try adjusting your search criteria' : 'Start by creating your first grievance'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredGrievances.map((grievance) => (
                   <motion.div
                     key={grievance.id}
                     variants={fadeInUp}
@@ -361,21 +446,11 @@ const GrievanceSystem = ({ setCurrentPage }) => {
                           </div>
                         </div>
                       </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
+                    </Card>                  </motion.div>
+                ))
+                )}
               </AnimatePresence>
             </motion.div>
-
-            {filteredGrievances.length === 0 && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
-                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileText className="w-12 h-12 text-gray-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No grievances found</h3>
-                <p className="text-gray-600">Try adjusting your search or filter criteria</p>
-              </motion.div>
-            )}
           </TabsContent>
 
           <TabsContent value="track" className="space-y-6">
@@ -448,7 +523,7 @@ const GrievanceSystem = ({ setCurrentPage }) => {
   )
 }
 
-const NewGrievanceForm = ({ onClose }) => {
+const NewGrievanceForm = ({ onClose, onSubmitSuccess }) => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -456,11 +531,40 @@ const NewGrievanceForm = ({ onClose }) => {
     priority: "",
     attachments: [],
   })
-
-  const handleSubmit = (e) => {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log("Grievance submitted:", formData)
-    onClose()
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      // Prepare ticket data object
+      const ticketData = {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        priority: formData.priority,
+      }
+
+      const response = await grievanceApi.createTicket(ticketData, formData.attachments)
+        // Success - close form and show success message
+      onClose()
+      if (onSubmitSuccess) {
+        onSubmitSuccess()
+      }
+      alert('Grievance submitted successfully! Your ticket ID is: ' + (response.data.ticketId || response.data.id))
+    } catch (error) {
+      console.error('Error submitting grievance:', error)
+      setError(error.message || 'Failed to submit grievance. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files)
+    setFormData({ ...formData, attachments: files })
   }
 
   return (
@@ -473,11 +577,16 @@ const NewGrievanceForm = ({ onClose }) => {
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder="Brief title of your grievance"
             required
+            disabled={isSubmitting}
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-          <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+          <Select 
+            value={formData.category} 
+            onValueChange={(value) => setFormData({ ...formData, category: value })}
+            disabled={isSubmitting}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
@@ -501,12 +610,17 @@ const NewGrievanceForm = ({ onClose }) => {
           placeholder="Provide detailed information about your grievance"
           rows={6}
           required
+          disabled={isSubmitting}
         />
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Priority Level</label>
-        <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value })}>
+        <Select 
+          value={formData.priority} 
+          onValueChange={(value) => setFormData({ ...formData, priority: value })}
+          disabled={isSubmitting}
+        >
           <SelectTrigger>
             <SelectValue placeholder="Select priority" />
           </SelectTrigger>
@@ -520,18 +634,52 @@ const NewGrievanceForm = ({ onClose }) => {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Supporting Documents</label>
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative">
           <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
           <p className="text-sm text-gray-600">Click to upload or drag and drop files</p>
           <p className="text-xs text-gray-500">PDF, DOC, JPG, PNG up to 10MB each</p>
+          <input
+            type="file"
+            multiple
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            onChange={handleFileChange}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            disabled={isSubmitting}
+          />
         </div>
+        {formData.attachments.length > 0 && (
+          <div className="mt-2">
+            <p className="text-sm text-gray-600">Selected files:</p>
+            <ul className="text-xs text-gray-500">
+              {formData.attachments.map((file, index) => (
+                <li key={index}>{file.name}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+
       <div className="flex space-x-4 pt-4">
-        <Button type="submit" className="flex-1 bg-gradient-to-r from-orange-500 to-green-600">
-          Submit Grievance
+        <Button 
+          type="submit" 
+          className="flex-1 bg-gradient-to-r from-orange-500 to-green-600"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Submitting..." : "Submit Grievance"}
         </Button>
-        <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onClose} 
+          className="flex-1"
+          disabled={isSubmitting}
+        >
           Cancel
         </Button>
       </div>

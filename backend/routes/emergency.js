@@ -7,6 +7,52 @@ const User = require('../models/User');
 const { createNotification } = require('../utils/notification');
 const { getSocketInstance } = require('../utils/socket');
 
+// Root emergency endpoint
+router.get('/', authenticateUser, async (req, res) => {
+  try {
+    const user = req.user;
+    
+    // Get emergency statistics
+    const [activeAlerts, userAlerts, totalAlerts] = await Promise.all([
+      EmergencyAlert.countDocuments({ status: 'active' }),
+      EmergencyAlert.countDocuments({ reportedBy: user._id }),
+      EmergencyAlert.countDocuments()
+    ]);
+    
+    const recentAlerts = await EmergencyAlert.find({ status: 'active' })
+      .populate('reportedBy', 'name rank service unit')
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('type severity location description createdAt');
+    
+    res.json({
+      message: 'Armed Forces Emergency System API',
+      user: {
+        name: user.name,
+        role: user.role,
+        service: user.service
+      },
+      summary: {
+        activeAlerts,
+        userAlerts,
+        totalAlerts,
+        recentAlerts
+      },
+      endpoints: {
+        alerts: '/api/emergency/alerts',
+        contacts: '/api/emergency/contacts',
+        statistics: '/api/emergency/statistics',
+        sos: 'POST /api/emergency/alerts'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Armed Forces Emergency System API', 
+      error: error.message 
+    });
+  }
+});
+
 // Create emergency alert (SOS)
 router.post('/alerts', authenticateUser, validateEmergencyAlert, async (req, res) => {
   try {
@@ -404,6 +450,91 @@ router.get('/contacts', authenticateUser, async (req, res) => {
     res.json(contacts);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching emergency contacts', error: error.message });
+  }
+});
+
+// Add emergency contact
+router.post('/contacts', authenticateUser, async (req, res) => {
+  try {
+    const { name, relationship, phoneNumber, isPrimary = false } = req.body;
+    
+    // Validate required fields
+    if (!name || !relationship || !phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, relationship, and phone number are required'
+      });
+    }
+    
+    // Validate phone number format
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number must be exactly 10 digits'
+      });
+    }
+    
+    const user = await User.findOne({ firebaseUid: req.user.uid });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Check if contact already exists
+    const existingContact = user.emergencyContacts.find(
+      contact => contact.phoneNumber === cleanPhone
+    );
+    
+    if (existingContact) {
+      return res.status(400).json({
+        success: false,
+        message: 'Emergency contact with this phone number already exists'
+      });
+    }
+    
+    // If setting as primary, remove primary flag from other contacts
+    if (isPrimary) {
+      user.emergencyContacts.forEach(contact => {
+        contact.isPrimary = false;
+      });
+    }
+    
+    // Add new emergency contact
+    const newContact = {
+      name: name.trim(),
+      relationship: relationship.trim(),
+      phoneNumber: cleanPhone,
+      isPrimary: isPrimary
+    };
+    
+    user.emergencyContacts.push(newContact);
+    await user.save();
+    
+    // Get the newly added contact
+    const addedContact = user.emergencyContacts[user.emergencyContacts.length - 1];
+    
+    res.status(201).json({
+      success: true,
+      message: 'Emergency contact added successfully',
+      contact: {
+        _id: addedContact._id,
+        name: addedContact.name,
+        relationship: addedContact.relationship,
+        phoneNumber: addedContact.phoneNumber,
+        isPrimary: addedContact.isPrimary
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error adding emergency contact:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error adding emergency contact',
+      error: error.message
+    });
   }
 });
 

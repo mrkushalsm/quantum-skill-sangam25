@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { marketplaceApi } from "@/lib/api"
 import { motion, AnimatePresence } from "framer-motion"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -27,6 +29,7 @@ import {
   Mail,
   Clock,
   CheckCircle,
+  Upload,
 } from "lucide-react"
 
 import { HomeIcon } from "lucide-react"
@@ -364,18 +367,65 @@ const AddResourceForm = ({ onClose }) => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    category: "",
-    type: "",
+    category: "equipment",
+    type: "share",
     price: "",
-    condition: "",
+    condition: "good",
     location: "",
-  })
+    images: [],
+  });
+  const [submitting, setSubmitting] = useState(false);
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    
+    try {
+      // Check if user is logged in before submitting
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error("You must be logged in to post items");
+        setSubmitting(false);
+        return;
+      }
+      
+      console.log('Form submitted: ', formData);
+      
+      // Use the API function
+      const response = await marketplaceApi.createItem(formData);
+      
+      console.log('Response from server:', response.data);
+      
+      // Clear form
+      setFormData({
+        title: '',
+        description: '',
+        category: 'equipment',
+        type: 'share',
+        price: '',
+        location: '',
+        condition: 'good',
+        images: []
+      });
+      
+      toast.success("Item posted successfully!");
+      setSubmitting(false);
+      onClose();
+      
+      // Refresh marketplace items if a callback was provided
+      // If you have a fetchMarketplaceItems function, uncomment this
+      // fetchMarketplaceItems();
+    } catch (error) {
+      console.error('Error posting resource:', error);
+      const errorMessage = error.response?.data?.message || 'Error posting item. Please try again.';
+      toast.error(errorMessage);
+      setSubmitting(false);
+    }
+  };
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    // Handle form submission
-    console.log("Form submitted:", formData)
-    onClose()
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files)
+    setFormData({ ...formData, images: files })
   }
 
   return (
@@ -388,11 +438,16 @@ const AddResourceForm = ({ onClose }) => {
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder="Enter resource title"
             required
+            disabled={submitting}
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-          <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+          <Select 
+            value={formData.category} 
+            onValueChange={(value) => setFormData({ ...formData, category: value })}
+            disabled={submitting}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
@@ -413,13 +468,18 @@ const AddResourceForm = ({ onClose }) => {
           placeholder="Describe your resource in detail"
           rows={4}
           required
+          disabled={submitting}
         />
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-          <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+          <Select 
+            value={formData.type} 
+            onValueChange={(value) => setFormData({ ...formData, type: value })}
+            disabled={submitting}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
@@ -436,11 +496,15 @@ const AddResourceForm = ({ onClose }) => {
             value={formData.price}
             onChange={(e) => setFormData({ ...formData, price: e.target.value })}
             placeholder="Free, ₹5000, Exchange"
+            disabled={submitting}
           />
-        </div>
-        <div>
+        </div>        <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Condition</label>
-          <Select value={formData.condition} onValueChange={(value) => setFormData({ ...formData, condition: value })}>
+          <Select 
+            value={formData.condition} 
+            onValueChange={(value) => setFormData({ ...formData, condition: value })}
+            disabled={submitting}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select condition" />
             </SelectTrigger>
@@ -461,83 +525,55 @@ const AddResourceForm = ({ onClose }) => {
           onChange={(e) => setFormData({ ...formData, location: e.target.value })}
           placeholder="Your cantonment/base location"
           required
+          disabled={submitting}
         />
       </div>
 
-      <div className="flex space-x-4 pt-4">
-        <Button type="submit" className="flex-1 bg-gradient-to-r from-orange-500 to-green-600">
-          Post Resource
-        </Button>
-        <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-          Cancel
-        </Button>
-      </div>
-    </form>
-  )
-}
-
-const ResourceDetail = ({ resource }) => {
-  return (
-    <div className="space-y-6">
-      <div className="grid md:grid-cols-2 gap-6">
-        <div>
-          <img
-            src={resource.image || "/placeholder.svg"}
-            alt={resource.title}
-            className="w-full h-64 object-cover rounded-lg"
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Images</label>
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative">
+          <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+          <p className="text-sm text-gray-600">Click to upload images</p>
+          <p className="text-xs text-gray-500">JPG, PNG up to 5MB each</p>
+          <input
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleImageChange}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            disabled={submitting}
           />
         </div>
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">{resource.title}</h2>
-            <p className="text-gray-600 mt-2">{resource.description}</p>
+        {formData.images.length > 0 && (
+          <div className="mt-2">
+            <p className="text-sm text-gray-600">Selected images:</p>
+            <ul className="text-xs text-gray-500">
+              {formData.images.map((file, index) => (
+                <li key={index}>{file.name}</li>
+              ))}
+            </ul>
           </div>
-
-          <div className="flex items-center space-x-4">
-            <Badge
-              className={`${
-                resource.type === "Share"
-                  ? "bg-green-500"
-                  : resource.type === "Exchange"
-                    ? "bg-blue-500"
-                    : "bg-orange-500"
-              } text-white`}
-            >
-              {resource.type}
-            </Badge>
-            <div className="text-2xl font-bold text-orange-600">{resource.price}</div>
-          </div>
-
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center">
-              <MapPin className="w-4 h-4 mr-2 text-gray-500" />
-              <span>{resource.location}</span>
-            </div>
-            <div className="flex items-center">
-              <User className="w-4 h-4 mr-2 text-gray-500" />
-              <span>
-                {resource.postedBy} • {resource.unit}
-              </span>
-            </div>
-            <div className="flex items-center">
-              <CheckCircle className="w-4 h-4 mr-2 text-gray-500" />
-              <span>Condition: {resource.condition}</span>
-            </div>
-          </div>
-
-          <div className="flex space-x-3 pt-4">
-            <Button className="flex-1 bg-orange-500 hover:bg-orange-600">
-              <Phone className="w-4 h-4 mr-2" />
-              Call Now
-            </Button>
-            <Button className="flex-1 bg-green-500 hover:bg-green-600">
-              <Mail className="w-4 h-4 mr-2" />
-              Send Message
-            </Button>
-          </div>
-        </div>
+        )}
       </div>
-    </div>
+
+      <div className="flex space-x-4 pt-4">
+        <Button 
+          type="submit" 
+          className="flex-1 bg-gradient-to-r from-orange-500 to-green-600"
+          disabled={submitting}
+        >
+          {submitting ? "Posting..." : "Post Resource"}
+        </Button>
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onClose} 
+          className="flex-1"
+          disabled={submitting}
+        >
+          Cancel
+        </Button>
+      </div>    </form>
   )
 }
 

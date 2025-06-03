@@ -1,0 +1,57 @@
+{
+  "name": "armed-forces-welfare-system",
+  "version": "1.0.0",
+  "description": "Comprehensive welfare management system for armed forces personnel and their families",
+  "main": "start-dev.js",
+  "scripts": {
+    "dev": "node start-dev.js",
+    "start": "node start-prod.js",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm install --production",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test",
+    "test:integration": "cd backend && npm run test:integration",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint",
+    "setup": "npm run setup:backend && npm run setup:frontend",
+    "setup:backend": "cd backend && npm install",
+    "setup:frontend": "cd frontend && npm install",
+    "seed": "cd backend && npm run seed",
+    "backup": "cd backend && npm run backup",
+    "health": "node -e \"require('http').get('http://localhost:3001/health', res => { let data = ''; res.on('data', chunk => data += chunk); res.on('end', () => console.log(JSON.parse(data))); }).on('error', err => console.error('Health check failed:', err.message));\""
+  },
+  "keywords": [
+    "armed-forces",
+    "welfare",
+    "management",
+    "military",
+    "nodejs",
+    "react",
+    "nextjs",
+    "mongodb",
+    "socket.io"
+  ],
+  "author": "Armed Forces Welfare Department",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/armed-forces/welfare-system.git"
+  },
+  "bugs": {
+    "url": "https://github.com/armed-forces/welfare-system/issues"
+  },
+  "homepage": "https://github.com/armed-forces/welfare-system#readme",
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  },
+  "dependencies": {
+    "axios": "^1.9.0"
+  }
+}

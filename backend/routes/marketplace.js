@@ -7,6 +7,52 @@ const MarketplaceItem = require('../models/MarketplaceItem');
 const User = require('../models/User');
 const { createNotification } = require('../utils/notification');
 
+// Root marketplace endpoint
+router.get('/', authenticateUser, async (req, res) => {
+  try {
+    const user = req.user;
+    
+    // Get summary statistics
+    const [totalItems, userItems, categories] = await Promise.all([
+      MarketplaceItem.countDocuments({ status: 'available' }),
+      MarketplaceItem.countDocuments({ sellerId: user._id }),
+      MarketplaceItem.distinct('category')
+    ]);
+    
+    const recentItems = await MarketplaceItem.find({ status: 'available' })
+      .populate('sellerId', 'name rank service')
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('title category price location images');
+    
+    res.json({
+      message: 'Armed Forces Marketplace API',
+      user: {
+        name: user.name,
+        role: user.role,
+        service: user.service
+      },
+      summary: {
+        totalItems,
+        userItems,
+        categoriesCount: categories.length,
+        recentItems
+      },
+      endpoints: {
+        items: '/api/marketplace/items',
+        categories: '/api/marketplace/categories',
+        userItems: '/api/marketplace/user/items',
+        chat: '/api/marketplace/chat'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Armed Forces Marketplace API', 
+      error: error.message 
+    });
+  }
+});
+
 // Get all marketplace items
 router.get('/items', authenticateUser, async (req, res) => {
   try {

@@ -98,12 +98,11 @@ const AuthModal = ({ isOpen, onClose, onLogin }: AuthModalProps) => {
           throw new Error('The authentication window took too long. Please try again.');
         }
       }, 300000); // 5 minutes
-      
-      // Listen for message from popup
+        // Listen for message from popup
       const messageHandler = async (event: MessageEvent) => {
-        try {
-          // Verify the origin of the message for security
-          if (event.origin !== new URL(process.env.NEXT_PUBLIC_API_URL).origin) {
+        try {          // Verify the origin of the message for security
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+          if (apiUrl && event.origin !== new URL(apiUrl).origin) {
             console.warn('Message from untrusted origin:', event.origin);
             return;
           }

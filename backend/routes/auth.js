@@ -4,21 +4,63 @@ const User = require('../models/User');
 const { admin, verifyIdToken, createCustomToken } = require('../config/firebase');
 const { authenticateUser } = require('../middleware/auth');
 
+// Handle preflight OPTIONS requests
+router.options('*', (req, res) => {
+  console.log('OPTIONS request to auth route:', req.url);
+  res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
+
 // Register new user
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, firstName, lastName, phoneNumber, address, role, serviceNumber, rank, unit } = req.body;
-
-    // Validate required fields
+    console.log('Registration request received:', req.body);
+    const { email, password, firstName, lastName, phoneNumber, address, role, serviceNumber, rank, unit } = req.body;    // Validate required fields
     if (!email || !password || !firstName || !lastName || !phoneNumber || !address || !role) {
+      console.log('Validation failed - missing fields:', { email: !!email, password: !!password, firstName: !!firstName, lastName: !!lastName, phoneNumber: !!phoneNumber, address: !!address, role: !!role });
       return res.status(400).json({
         success: false,
         message: 'All fields are required'
       });
     }
 
-    // Check if user already exists in our database
-    const existingUser = await User.findOne({ email });
+    // Validate phone number (should be 10 digits)
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number must be exactly 10 digits'
+      });
+    }
+
+    // Validate address object if it's provided as an object
+    if (typeof address === 'object' && address !== null) {
+      if (!address.street || !address.city || !address.state || !address.pincode) {
+        return res.status(400).json({
+          success: false,
+          message: 'Complete address information is required (street, city, state, pincode)'
+        });
+      }
+      
+      // Validate pincode (should be 6 digits)
+      const cleanPincode = address.pincode.replace(/\D/g, '');
+      if (cleanPincode.length !== 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Pincode must be exactly 6 digits'
+        });
+      }
+    }// Check if user already exists in our database
+    const existingUser = await User.findOne({ 
+      $or: [
+        { 'coreData.contactInfo.email': email },
+        { email: email }
+      ]
+    });
+    
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -82,21 +124,42 @@ router.post('/register', async (req, res) => {
         message: errorMessage,
         error: firebaseError.message
       });
-    }
-
-    // Create user in our database
+    }    // Create user in our database
     const userData = {
       firebaseUid: firebaseUser.uid,
-      email,
+      coreData: {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        role: role === 'officer' ? 'Officer' : role === 'admin' ? 'Admin' : 'Family',
+        contactInfo: {
+          email: email.trim(),
+          phone: phoneNumber.replace(/\D/g, '').slice(-10) // Extract only digits, take last 10
+        }
+      },
+      address: typeof address === 'object' ? {
+        street: address.street || '',
+        city: address.city || '',
+        state: address.state || '',
+        pincode: (address.pincode || '').replace(/\D/g, '').slice(-6), // Extract only digits, take last 6
+        country: address.country || 'India'
+      } : {
+        street: address || '',
+        city: 'Unknown',
+        state: 'Unknown',
+        pincode: '000000',
+        country: 'India'
+      },
+      isActive: true,
+      isVerified: false,
+      // Computed fields for easier access
+      email: email.trim(),
       name: `${firstName} ${lastName}`.trim(),
-      phoneNumber,
-      address,
-      role,
-      serviceNumber: serviceNumber || `TEMP-${Date.now()}`,
-      isActive: true
+      role: role
     };
 
-    // Add role-specific fields
+    console.log('Creating user with data:', JSON.stringify(userData, null, 2));
+
+    // Add role-specific extensions
     if (role === 'officer') {
       if (!rank || !unit) {
         // Clean up the Firebase user if we fail to create in our DB
@@ -105,9 +168,19 @@ router.post('/register', async (req, res) => {
           success: false,
           message: 'Rank and unit are required for officers'
         });
-      }
-      userData.rank = rank;
-      userData.unit = unit;
+      }      userData.extensions = {
+        serviceNumber: serviceNumber || `TEMP-${Date.now()}`,
+        rank: rank.trim(),
+        unit: unit.trim()
+      };
+      userData.serviceNumber = serviceNumber || `TEMP-${Date.now()}`;
+      userData.rank = rank.trim();
+      userData.unit = unit.trim();
+    } else if (role === 'family_member') {
+      userData.extensions = {
+        relationToOfficer: 'other', // Default, can be updated later
+        officerServiceNumber: serviceNumber || 'UNKNOWN'
+      };
     }
 
     const user = new User(userData);
@@ -117,17 +190,17 @@ router.post('/register', async (req, res) => {
     const token = await createCustomToken(firebaseUser.uid, {
       role: user.role,
       userId: user._id.toString()
-    });
-
-    res.status(201).json({
+    });    res.status(201).json({
       success: true,
       message: 'User registered successfully',
       user: {
         id: user._id,
-        email: user.email,
+        email: user.coreData.contactInfo.email,
+        firstName: user.coreData.firstName,
+        lastName: user.coreData.lastName,
         name: user.name,
         role: user.role,
-        serviceNumber: user.serviceNumber
+        serviceNumber: user.serviceNumber || undefined
       },
       token
     });
@@ -236,14 +309,12 @@ router.post('/login', async (req, res) => {
     const token = await createCustomToken(firebaseUser.uid, {
       role: user.role,
       userId: user._id.toString()
-    });
-
-    res.json({
+    });    res.json({
       success: true,
       message: 'Login successful',
       user: {
         id: user._id,
-        email: user.email,
+        email: user.coreData.contactInfo.email,
         name: user.name,
         role: user.role,
         serviceNumber: user.serviceNumber,

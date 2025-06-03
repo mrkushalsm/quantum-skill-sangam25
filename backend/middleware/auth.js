@@ -3,46 +3,27 @@ const User = require('../models/User');
 
 const authenticateUser = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    const token = req.headers.authorization?.split(' ')[1];
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Access denied. No token provided.' 
-      });
+    if (!token) {
+      console.log('No authentication token provided');
+      return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const token = authHeader.substring(7);
+    console.log(`Token validation attempt: ${token.substring(0, 10)}...`);
     
-    // Verify Firebase token
-    const decodedToken = await verifyFirebaseToken(token);
-    
-    // Get user from database
-    const user = await User.findOne({ firebaseUid: decodedToken.uid });
-    
-    if (!user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'User not found. Please register first.' 
-      });
+    try {
+      const decodedToken = await verifyFirebaseToken(token);
+      req.user = { uid: decodedToken.uid };
+      console.log(`Token validated successfully for user: ${decodedToken.uid}`);
+      next();
+    } catch (error) {
+      console.error('Token verification failed:', error.message);
+      return res.status(401).json({ message: 'Invalid or expired token' });
     }
-
-    if (!user.isActive) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Account is deactivated. Please contact administrator.' 
-      });
-    }
-
-    req.user = user;
-    req.firebaseUser = decodedToken;
-    next();
   } catch (error) {
-    console.error('Authentication error:', error.message);
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Invalid or expired token' 
-    });
+    console.error('Authentication middleware error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
