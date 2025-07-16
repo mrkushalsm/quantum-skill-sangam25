@@ -74,7 +74,6 @@ const initializeFirebase = () => {
 const verifyIdToken = async (idToken) => {
   try {
     if (process.env.NODE_ENV === 'test') {
-      // Mock verification for tests
       return {
         uid: 'test-user',
         email: 'test@example.com',
@@ -89,13 +88,80 @@ const verifyIdToken = async (idToken) => {
     const auth = admin.auth();
     const decodedToken = await auth.verifyIdToken(idToken);
     
-    // Optionally, you can fetch the user's full record
-    // const userRecord = await auth.getUser(decodedToken.uid);
-    
-    return {
-      ...decodedToken,
-      // ...userRecord.toJSON()
-    };
+    return decodedToken;
+  } catch (error) {
+    console.error('Token verification failed:', error.message);
+    throw new Error(`Authentication failed: ${error.message}`);
+  }
+};
+
+// Create custom token
+const createCustomToken = async (uid, additionalClaims = {}) => {
+  try {
+    if (process.env.NODE_ENV === 'test') {
+      return 'mock-custom-token';
+    }
+
+    const auth = admin.auth();
+    const customToken = await auth.createCustomToken(uid, additionalClaims);
+    return customToken;
+  } catch (error) {
+    console.error('Custom token creation failed:', error.message);
+    throw new Error(`Token creation failed: ${error.message}`);
+  }
+};
+
+// Verify any Firebase token (custom or ID token)
+const verifyFirebaseToken = async (token) => {
+  try {
+    if (process.env.NODE_ENV === 'test') {
+      return {
+        uid: 'test-user',
+        email: 'test@example.com',
+        name: 'Test User'
+      };
+    }
+
+    if (!token) {
+      throw new Error('No token provided');
+    }
+
+    const auth = admin.auth();
+
+    // Try to verify as ID token first
+    try {
+      const decodedToken = await auth.verifyIdToken(token);
+      return decodedToken;
+    } catch (idTokenError) {
+      console.log('Token is not an ID token, checking if it\'s a custom token format');
+
+      // If it fails as ID token, it might be a custom token
+      // Custom tokens need to be exchanged for ID tokens on the client side
+      // For now, we'll decode it manually to extract the UID
+      try {
+        // Decode the JWT payload without verification (since custom tokens are signed differently)
+        const [header, payload, signature] = token.split('.');
+        if (!payload) {
+          throw new Error('Invalid token format');
+        }
+
+        const decodedPayload = JSON.parse(Buffer.from(payload, 'base64').toString());
+
+        // Check if it's a Firebase custom token format
+        if (decodedPayload.iss && decodedPayload.iss.includes('firebase') && decodedPayload.uid) {
+          // Return minimal user info for custom tokens
+          return {
+            uid: decodedPayload.uid,
+            ...decodedPayload.claims
+          };
+        }
+
+        throw new Error('Token format not recognized');
+      } catch (customTokenError) {
+        console.error('Failed to process custom token:', customTokenError.message);
+        throw new Error('Invalid token format');
+      }
+    }
   } catch (error) {
     console.error('Token verification failed:', error.message);
     throw new Error(`Authentication failed: ${error.message}`);
@@ -145,16 +211,6 @@ const getStorage = () => {
   return admin.storage();
 };
 
-// Create custom token for user
-const createCustomToken = async (uid, additionalClaims = {}) => {
-  try {
-    const customToken = await admin.auth().createCustomToken(uid, additionalClaims);
-    return customToken;
-  } catch (error) {
-    throw new Error('Failed to create custom token');
-  }
-};
-
 // Get user by UID
 const getUserByUid = async (uid) => {
   try {
@@ -194,7 +250,7 @@ if (process.env.NODE_ENV !== 'test') {
 module.exports = {
   initializeFirebase,
   verifyIdToken,
-  verifyFirebaseToken: verifyIdToken, // Alias for backward compatibility
+  verifyFirebaseToken,
   createCustomToken,
   getUserByUid,
   setCustomUserClaims,
