@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: armed-forces-welfare-backend
+    runtime: node
+    plan: free
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        fromService:
+          type: web
+          name: armed-forces-welfare-backend
+          property: port
+    autoDeploy: true
+    branch: main
+    rootDir: backend
+
