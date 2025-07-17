@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
+import { LucideIcon } from "lucide-react"
 import {
   Shield,
   Search,
@@ -32,13 +33,52 @@ import {
   Building,
 } from "lucide-react"
 
-const WelfareSchemes = ({ setCurrentPage }) => {
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedScheme, setSelectedScheme] = useState(null)
-  const [activeTab, setActiveTab] = useState("browse")
+// Type definitions
+interface WelfareSchemesProps {
+  setCurrentPage: (page: string) => void
+}
 
-  const categories = [
+interface Category {
+  id: string
+  name: string
+  icon: LucideIcon
+  color: string
+  count: number
+}
+
+interface WelfareScheme {
+  id: number
+  title: string
+  shortDescription: string
+  description: string
+  category: string
+  eligibility: string[]
+  benefits: string[]
+  applicationDeadline: string
+  status: "Open" | "Closed" | "Coming Soon"
+  documentsRequired: string[]
+  processingTime: string
+  contactOfficer: string
+  contactPhone: string
+  contactEmail: string
+  applicationsReceived: number
+  maxApplications: number
+  successRate: number
+  lastUpdated: string
+  ministry: string
+  implementingAgency: string
+  schemeCode: string
+  launchDate: string
+  tags: string[]
+}
+
+const WelfareSchemes = ({ setCurrentPage }: WelfareSchemesProps) => {
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [searchQuery, setSearchQuery] = useState<string>("")
+  const [selectedScheme, setSelectedScheme] = useState<WelfareScheme | null>(null)
+  const [activeTab, setActiveTab] = useState<string>("browse")
+
+  const categories: Category[] = [
     { id: "all", name: "All Schemes", icon: Shield, color: "bg-blue-500", count: 25 },
     { id: "education", name: "Education & Training", icon: GraduationCap, color: "bg-green-500", count: 8 },
     { id: "medical", name: "Medical & Health", icon: Heart, color: "bg-red-500", count: 6 },
@@ -47,7 +87,7 @@ const WelfareSchemes = ({ setCurrentPage }) => {
     { id: "family", name: "Family Welfare", icon: Users, color: "bg-pink-500", count: 2 },
   ]
 
-  const schemes = [
+  const schemes: WelfareScheme[] = [
     {
       id: 1,
       title: "Army Education Corps Scholarship",
@@ -334,7 +374,7 @@ const WelfareSchemes = ({ setCurrentPage }) => {
     return matchesCategory && matchesSearch
   })
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: "Open" | "Closed" | "Coming Soon"): string => {
     switch (status) {
       case "Open":
         return "bg-green-100 text-green-800 border-green-200"
@@ -743,7 +783,12 @@ const WelfareSchemes = ({ setCurrentPage }) => {
   )
 }
 
-const SchemeDetail = ({ scheme, getStatusColor }) => {
+interface SchemeDetailProps {
+  scheme: WelfareScheme
+  getStatusColor: (status: "Open" | "Closed" | "Coming Soon") => string
+}
+
+const SchemeDetail = ({ scheme, getStatusColor }: SchemeDetailProps) => {
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between">
