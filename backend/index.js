@@ -3,7 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const { createServer } = require('https');
+const { createServer } = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 require('dotenv').config();
@@ -79,8 +79,10 @@ app.use(cors({
     'http://localhost:3002', 
     'http://localhost:3003', 
     'http://localhost:5173',
-    process.env.CORS_ORIGIN
-  ].filter(Boolean), // Remove any undefined values
+    process.env.CORS_ORIGIN,
+    process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN + '/' : null,
+    process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.replace(/\/$/, '') : null
+  ].filter(Boolean), // Remove any undefined/null values
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
@@ -211,17 +213,17 @@ process.on('SIGTERM', () => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   logger.info(`🚀 Server running on port ${PORT}`);
   logger.info(`🔥 Environment: ${process.env.NODE_ENV}`);
   logger.info(`🌐 API Base URL: http://localhost:${PORT}/api`);
   logger.info(`📊 Health Check: http://localhost:${PORT}/health`);
   logger.info(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
-  console.log(`��� Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🔥 Environment: ${process.env.NODE_ENV}`);
   console.log(`🌐 API Base URL: http://localhost:${PORT}/api`);
   console.log(`📊 Health Check: http://localhost:${PORT}/health`);
-  console.log(`���� API Documentation: http://localhost:${PORT}/api/docs`);
+  console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
 });
 
 module.exports = { app, io };
