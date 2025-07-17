@@ -33,9 +33,10 @@ const io = new Server(server, {
       "http://localhost:3001",
       "http://localhost:3002", 
       "http://localhost:3003", 
-      "http://localhost:5173"
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
+      "http://localhost:5173",
+      process.env.CORS_ORIGIN
+    ].filter(Boolean),
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     credentials: true
   }
 });
@@ -77,12 +78,21 @@ app.use(cors({
     'http://localhost:3001',
     'http://localhost:3002', 
     'http://localhost:3003', 
-    'http://localhost:5173'
-  ],
+    'http://localhost:5173',
+    process.env.CORS_ORIGIN
+  ].filter(Boolean), // Remove any undefined values
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Access-Control-Allow-Origin']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin'
+  ],
+  exposedHeaders: ['Access-Control-Allow-Origin'],
+  preflightContinue: false,
+  optionsSuccessStatus: 200
 }));
 
 // Debug middleware for CORS requests
@@ -207,11 +217,11 @@ server.listen(PORT, () => {
   logger.info(`🌐 API Base URL: http://localhost:${PORT}/api`);
   logger.info(`📊 Health Check: http://localhost:${PORT}/health`);
   logger.info(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`��� Server running on port ${PORT}`);
   console.log(`🔥 Environment: ${process.env.NODE_ENV}`);
   console.log(`🌐 API Base URL: http://localhost:${PORT}/api`);
   console.log(`📊 Health Check: http://localhost:${PORT}/health`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
+  console.log(`���� API Documentation: http://localhost:${PORT}/api/docs`);
 });
 
 module.exports = { app, io };
