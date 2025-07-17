@@ -3,7 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const { createServer } = require('http');
+const { createServer } = require('https');
 const { Server } = require('socket.io');
 const path = require('path');
 require('dotenv').config();
